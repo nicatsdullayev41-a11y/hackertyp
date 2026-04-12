@@ -1,1 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Hacker Typer — точная копия</title>
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
 
+        body {
+            background: radial-gradient(circle at 20% 30%, #0a0f1a, #03060c);
+            font-family: 'Courier New', 'Fira Code', monospace;
+            margin: 0;
+            min-height: 100vh;
+            overflow-x: hidden;
+            cursor: crosshair;
+        }
+
+        /* главный экран с текстом */
+        .hacker-screen {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            right: 380px;
+            bottom: 20px;
+            background: #000000cc;
+            backdrop-filter: blur(2px);
+            border: 1px solid #1effbc;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(0, 255, 170, 0.2);
+            padding: 20px;
+            overflow-y: auto;
+            color: #0f0;
+            font-size: 1.2rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            z-index: 10;
+        }
+
+        .hacker-screen::-webkit-scrollbar {
+            width: 8px;
+        }
+        .hacker-screen::-webkit-scrollbar-track {
+            background: #111;
+        }
+        .hacker-screen::-webkit-scrollbar-thumb {
+            background: #1effbc;
+            border-radius: 4px;
+        }
+
+        /* панель иконок справа */
+        .icon-bar {
+            position: fixed;
+            right: 20px;
+            top: 20px;
+            bottom: 20px;
+            width: 320px;
+            background: #0a0f1cee;
+            border: 1px solid #1effbc;
+            border-radius: 20px;
+            backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 20px 12px;
+            z-index: 20;
+            overflow-y: auto;
+            box-shadow: -5px 0 20px rgba(0,0,0,0.6);
+        }
+
+        .icon-btn {
+            background: #0c111f;
+            border: 1px solid #2effbc;
+            color: #b3ffdd;
+            padding: 12px;
+            border-radius: 40px;
+            font-family: monospace;
+            font-weight: bold;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.1s ease;
+            cursor: pointer;
+            box-shadow: 0 0 5px #1effaa33;
+        }
+
+        .icon-btn:hover {
+            background: #1effbc22;
+            color: #ffffff;
+            border-color: #ffff88;
+            transform: scale(0.98);
+            box-shadow: 0 0 12px #1effbc;
+        }
+
+        /* плавающие окна */
+        .floating-window {
+            position: absolute;
+            background: #010a14ee;
+            backdrop-filter: blur(12px);
+            border: 2px solid #1effbc;
+            border-radius: 16px;
+            padding: 0;
+            min-width: 280px;
+            min-height: 200px;
+            z-index: 100;
+            resize: both;
+            overflow: hidden;
+            box-shadow: 10px 10px 25px black;
+            font-family: monospace;
+            color: #aaffdd;
+        }
+
+        .window-header {
+            background: #0f2120;
+            padding: 8px 12px;
+            cursor: grab;
+            border-bottom: 1px solid #1effbc;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            user-select: none;
+        }
+        .window-header:active { cursor: grabbing; }
+        .close-window {
+            background: #ff3366;
+            border: none;
+            color: white;
+            border-radius: 30px;
+            width: 22px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .window-content {
+            padding: 16px;
+            font-size: 0.9rem;
+            background: #000000aa;
+            height: calc(100% - 42px);
+            overflow: auto;
+        }
+
+        /* матрица, нейросеть, спецэффекты */
+        .matrix-canvas, .neural-canvas {
+            width: 100%;
+            height: 200px;
+            background: black;
+            display: block;
+        }
+        .status-led {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #0f0;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.3; box-shadow: 0 0 0px #0f0;}
+            100% { opacity: 1; box-shadow: 0 0 6px #0f0;}
+        }
+
+        button {
+            background: #111;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 6px 12px;
+            font-family: monospace;
+            cursor: pointer;
+        }
+        hr { border-color: #1effbc33; }
+    </style>
+</head>
+<body>
+
+<div class="hacker-screen" id="typerScreen">
+    > <span id="cursorBlink">█</span>
+</div>
+
+<div class="icon-bar">
+    <div class="icon-btn" data-prog="mainServer">🖥️ MAIN SERVER</div>
+    <div class="icon-btn" data-prog="bitcoinMiner">⛏️ BITCOIN MINER</div>
+    <div class="icon-btn" data-prog="surveillance">📡 SURVEILLANCE CAM</div>
+    <div class="icon-btn" data-prog="passwordCracker">🔓 PASSWORD CRACKER</div>
+    <div class="icon-btn" data-prog="nuclearPlant">☢️ NUCLEAR PLANT</div>
+    <div class="icon-btn" data-prog="remoteConn">🌐 REMOTE ACCESS</div>
+    <div class="icon-btn" data-prog="compiler">⚙️ COMPILER v2.0</div>
+    <div class="icon-btn" data-prog="console">📟 PROGRAM CONSOLE</div>
+    <div class="icon-btn" data-prog="matrix">🌌 MATRIX RAIN</div>
+    <div class="icon-btn" data-prog="satellite">🛰️ SATELLITE TRACK</div>
+</div>
+
+<script>
+    // ---------------------- ХАКЕР ПЕЧАТАТЬ -------------------------
+    const screenDiv = document.getElementById('typerScreen');
+    let currentText = "> ";
+    let lastKeyTime = 0;
+
+    function typeHackerText(inputChar) {
+        // симуляция быстрого набора: добавляем от 2 до 6 символов за нажатие
+        const charsToAdd = ['0', '1', 'K', 'x', '9', 'f', 'A', '#', '~', 'sys', 'root', '>', 'init', 'decrypt', '0x7F', 'var', 'data', 'auth'];
+        let added = '';
+        let count = Math.floor(Math.random() * 4) + 2;
+        for(let i=0; i<count; i++) {
+            let r = charsToAdd[Math.floor(Math.random() * charsToAdd.length)];
+            added += r;
+            if(Math.random() > 0.7) added += ' ';
+        }
+        currentText += added + (Math.random() > 0.8 ? '\n> ' : ' ');
+        if(currentText.length > 2800) currentText = currentText.slice(-2500);
+        screenDiv.innerHTML = currentText + '<span id="cursorBlink">█</span>';
+        const cursorSpan = document.getElementById('cursorBlink');
+        if(cursorSpan) cursorSpan.scrollIntoView({behavior: 'smooth', block: 'end'});
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if(e.key === ' ' && document.activeElement?.tagName !== 'INPUT') {
+            e.preventDefault();
+            // закрыть верхнее окно если есть
+            let allWindows = document.querySelectorAll('.floating-window');
+            if(allWindows.length) allWindows[allWindows.length-1].remove();
+            return;
+        }
+        if(e.key >= '0' && e.key <= '9') {
+            e.preventDefault();
+            const programsMap = {
+                '1': 'mainServer','2': 'bitcoinMiner','3': 'surveillance','4': 'passwordCracker',
+                '5': 'nuclearPlant','6': 'remoteConn','7': 'compiler','8': 'console','9': 'matrix','0': 'satellite'
+            };
+            createWindowByType(programsMap[e.key]);
+            return;
+        }
+        typeHackerText(e.key);
+    });
+
+    // ---------------------- СОЗДАНИЕ ОКОН (точный стиль) ----------
+    function createWindowByType(type) {
+        const id = 'win_' + Date.now() + Math.random();
+        const win = document.createElement('div');
+        win.className = 'floating-window';
+        win.style.left = (50 + Math.random() * 300) + 'px';
+        win.style.top = (80 + Math.random() * 200) + 'px';
+        win.style.width = '380px';
+        win.style.minHeight = '260px';
+
+        let headerText = 'UNKNOWN';
+        let contentHtml = '<div style="padding:10px">[DATA]</div>';
+
+        switch(type) {
+            case 'mainServer':
+                headerText = '🛡️ MAIN GOVERNMENT SERVER';
+                contentHtml = `<div>🔐 IP: 23.86.111.0<br>🔒 STATUS: TOP SECRET<br>⚠️ ACCESS LOG: ${new Date().toLocaleTimeString()}<br><span class="status-led"></span> SECURE SHELL v9.2<br>→ root@server:~# <span style="color:#ffff88">connection stable</span></div>`;
+                break;
+            case 'bitcoinMiner':
+                headerText = '⛏️ BITCOIN MINER POOL';
+                contentHtml = `<div>⚡ Hashrate: 1.24 Ph/s<br>💰 Wallet: 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa<br>📊 Blocks mined: 342<br>🎛️ GPU: 8x RTX 9090 Ti<br><progress value="78" max="100" style="width:100%"></progress><br>🔥 Temp: 67°C | FAN: 4200 RPM</div>`;
+                break;
+            case 'surveillance':
+                headerText = '📷 HEADQUARTER SURVEILLANCE';
+                contentHtml = `<div>🎥 FEED: [ENCRYPTED]<br>📍 TARGET: UNKNOWN<br>🕒 TIMESTAMP: ${new Date().toUTCString()}<br><canvas id="camCanvas" width="340" height="150" style="background:#000; border:1px solid #0f0"></canvas><br><span style="color:#ff8888">⚠️ motion detected</span></div>`;
+                setTimeout(() => {
+                    const canvas = win.querySelector('#camCanvas');
+                    if(canvas) {
+                        let ctx = canvas.getContext('2d');
+                        let frame = 0;
+                        function drawNoise() {
+                            if(!win.isConnected) return;
+                            let imgData = ctx.createImageData(canvas.width, canvas.height);
+                            for(let i=0; i<imgData.data.length; i+=4) {
+                                let val = Math.random() * 255;
+                                imgData.data[i] = val;
+                                imgData.data[i+1] = val*0.5;
+                                imgData.data[i+2] = Math.random()*150;
+                                imgData.data[i+3] = 255;
+                            }
+                            ctx.putImageData(imgData,0,0);
+                            requestAnimationFrame(drawNoise);
+                        }
+                        drawNoise();
+                    }
+                }, 50);
+                break;
+            case 'passwordCracker':
+                headerText = '⚡ PASSWORD CRACKER v3.7';
+                contentHtml = `<div>🎯 TARGET: admin@secure.gov<br>🔑 HASH: 5f4dcc3b5aa765d61d8327deb882cf99<br><progress value="67" max="100" id="crackProgress" style="width:100%"></progress><br>💀 STATUS: BRUTE FORCE [RUNNING]<br><button id="crackBtn">⟳ CRACK NOW</button><br><div id="crackResult"></div></div>`;
+                setTimeout(() => {
+                    const btn = win.querySelector('#crackBtn');
+                    if(btn) btn.onclick = () => {
+                        let prog = win.querySelector('#crackProgress');
+                        let resDiv = win.querySelector('#crackResult');
+                        let val = 0;
+                        let interval = setInterval(() => {
+                            val += Math.random() * 12;
+                            if(val >= 100) {
+                                clearInterval(interval);
+                                resDiv.innerHTML = '✅ PASSWORD FOUND: "P@ssw0rd2026!"';
+                                prog.value = 100;
+                            } else {
+                                prog.value = val;
+                                resDiv.innerHTML = '🔍 trying combinations...';
+                            }
+                        }, 200);
+                    };
+                }, 10);
+                break;
+            case 'nuclearPlant':
+                headerText = '⚠️ NUCLEAR REACTOR PANEL';
+                contentHtml = `<div>⚛️ CORE TEMP: <span id="tempVal">3150</span>°C<br>🌀 COOLANT FLOW: 78%<br>⚠️ ROD POSITION: 23%<br>🚨 ALERT: PRESSURE UNSTABLE<br><button id="emergencyShutdown">⛔ SCRAM</button><br><span id="nukeStatus">✅ STABLE</span></div>`;
+                setTimeout(() => {
+                    const btnShutdown = win.querySelector('#emergencyShutdown');
+                    if(btnShutdown) btnShutdown.onclick = () => {
+                        const statusSpan = win.querySelector('#nukeStatus');
+                        statusSpan.innerHTML = '💥 MELTDOWN SEQUENCE ACTIVE !!';
+                        statusSpan.style.color = 'red';
+                        let tempSpan = win.querySelector('#tempVal');
+                        let interval = setInterval(() => {
+                            let t = parseInt(tempSpan.innerText);
+                            t += Math.floor(Math.random()*200);
+                            tempSpan.innerText = t;
+                            if(t > 6500) {
+                                clearInterval(interval);
+                                statusSpan.innerHTML = '☢️ CORE DISASTER – EVACUATE';
+                            }
+                        }, 600);
+                    };
+                }, 20);
+                break;
+            case 'remoteConn':
+                headerText = '🌐 REMOTE CONNECTION [ACTIVE]';
+                contentHtml = `<div>🔗 CONNECTING TO DARKNET...<br>✅ HANDSHAKE: AES-256<br>🖥️ TARGET: 10.0.2.15<br><span class="status-led"></span> ROOT ACCESS GRANTED<br>➤ Commands: <span id="cmdOut">help</span><br><input id="cmdInput" placeholder=">>" style="background:#000;color:#0f0;width:90%"></div>`;
+                setTimeout(() => {
+                    let inputField = win.querySelector('#cmdInput');
+                    let outSpan = win.querySelector('#cmdOut');
+                    if(inputField) inputField.onkeydown = (e) => {
+                        if(e.key === 'Enter') {
+                            outSpan.innerHTML = `> ${inputField.value} → [${Math.random() > 0.3 ? 'OK' : 'ACCESS VIOLATION'}]`;
+                            inputField.value = '';
+                        }
+                    };
+                }, 10);
+                break;
+            case 'compiler':
+                headerText = '🔧 GCC ADVANCED COMPILER';
+                contentHtml = `<div>📁 COMPILING: payload.bin<br>🔍 OPTIMIZATION: -O3<br><progress value="45" max="100"></progress><br>📝 OUTPUT: <span id="compileLog">linking libraries...</span><br><button id="recompile">⟳ RECOMPILE</button></div>`;
+                setTimeout(() => {
+                    let btnRe = win.querySelector('#recompile');
+                    let logSpan = win.querySelector('#compileLog');
+                    if(btnRe) btnRe.onclick = () => {
+                        logSpan.innerHTML = 'build started.. [ OK ] → exploit ready';
+                    };
+                }, 10);
+                break;
+            case 'console':
+                headerText = '⌨️ PROGRAM CONSOLE';
+                contentHtml = `<div>⚠️ WARNING: UNAUTHORIZED ACCESS<br>PERMISSION GRANTED? <span id="permGrant">DENIED</span><br><button id="overrideBtn">OVERRIDE</button><br>➤ <span id="sysMsg">system idle</span></div>`;
+                setTimeout(() => {
+                    let ovr = win.querySelector('#overrideBtn');
+                    if(ovr) ovr.onclick = () => {
+                        win.querySelector('#permGrant').innerHTML = 'GRANTED 🔓';
+                        win.querySelector('#sysMsg').innerHTML = 'access level: ADMIN';
+                    };
+                }, 10);
+                break;
+            case 'matrix':
+                headerText = '🌌 MATRIX CODE RAIN';
+                contentHtml = `<canvas id="matrixCanvas" width="360" height="200" style="background:black; width:100%"></canvas>`;
+                setTimeout(() => {
+                    const canvas = win.querySelector('#matrixCanvas');
+                    if(!canvas) return;
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = 360; canvas.height = 200;
+                    const cols = Math.floor(canvas.width / 18);
+                    const drops = Array(cols).fill(1);
+                    function drawMatrix() {
+                        if(!win.isConnected) return;
+                        ctx.fillStyle = 'rgba(0,0,0,0.05)';
+                        ctx.fillRect(0,0,canvas.width,canvas.height);
+                        ctx.fillStyle = '#0f0';
+                        ctx.font = '14px monospace';
+                        for(let i=0;i<drops.length;i++) {
+                            const text = String.fromCharCode(0x30A0 + Math.random()*96);
+                            ctx.fillText(text, i*18, drops[i]*18);
+                            if(drops[i]*18 > canvas.height && Math.random() > 0.975) drops[i]=0;
+                            drops[i]++;
+                        }
+                        requestAnimationFrame(drawMatrix);
+                    }
+                    drawMatrix();
+                }, 50);
+                break;
+            case 'satellite':
+                headerText = '🛰️ SATELLITE GEOLOCATION';
+                contentHtml = `<div>🛸 TRACKING: 51.5074° N, 0.1278° W<br>📡 SIGNAL: LOCKED<br>🌍 MAP DATA: encrypted stream<br><progress value="88" max="100"></progress><br>📍 LAST KNOWN: LONDON UNDERGROUND</div>`;
+                break;
+            default: break;
+        }
+
+        win.innerHTML = `<div class="window-header"><span>${headerText}</span><button class="close-window">✖</button></div><div class="window-content">${contentHtml}</div>`;
+        document.body.appendChild(win);
+
+        const closeBtn = win.querySelector('.close-window');
+        closeBtn.onclick = () => win.remove();
+
+        // drag & drop функционал
+        let header = win.querySelector('.window-header');
+        let offsetX, offsetY, mouseX, mouseY;
+        header.onmousedown = (e) => {
+            e.preventDefault();
+            offsetX = e.clientX - win.offsetLeft;
+            offsetY = e.clientY - win.offsetTop;
+            document.onmousemove = (moveEvent) => {
+                win.style.left = (moveEvent.clientX - offsetX) + 'px';
+                win.style.top = (moveEvent.clientY - offsetY) + 'px';
+            };
+            document.onmouseup = () => { document.onmousemove = null; };
+        };
+    }
+
+    // Обработка иконок
+    document.querySelectorAll('.icon-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const prog = btn.getAttribute('data-prog');
+            createWindowByType(prog);
+        });
+    });
+
+    // начальный текст в стиле хакера
+    setTimeout(() => {
+        currentText = "> SYSTEM ONLINE. ROOT ACCESS GRANTED.\n> INIT SECURE PROTOCOLS...\n> TARGET: GLOBAL DIRECTIVE\n> ";
+        screenDiv.innerHTML = currentText + '<span id="cursorBlink">█</span>';
+    }, 100);
+</script>
+</body>
+</html>
